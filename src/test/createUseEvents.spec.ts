@@ -14,7 +14,7 @@ const possibleValue: {
   error: any | undefined;
 } = {
   value: undefined,
-  error: null
+  error: undefined,
 };
 
 mockedEvents.generateFetchEventByName.mockReturnValue(() => {
@@ -24,33 +24,35 @@ mockedEvents.generateFetchEventByName.mockReturnValue(() => {
 
 describe("createUseEvents", () => {
   let useEvents: CreateUseEvents;
+  let id: string;
   beforeEach(() => {
     possibleValue.value = undefined;
     possibleValue.error = undefined;
 
-    const id = Math.random()
-      .toString(16)
-      .substr(2);
-    useEvents = createUseEvents(
-      "any",
-      `teste-${id}`,
-      "teste:event",
-      {},
-      mode.AUTO
-    );
+    id = Math.random().toString(16).substr(2);
   });
 
   it("must respond with success with a simple success event", async () => {
     possibleValue.value = {};
     let done = false;
 
-    const { waitForValueToChange } = renderHook(() =>
-      useEvents({}, (err?: Error, data?: any) => {
-        expect(err).toBeUndefined();
-        expect(data).not.toBeUndefined();
+    useEvents = createUseEvents(`teste-${id}`, {
+      hostname: "any",
+      event: "teste:event",
+      auto: mode.AUTO,
+    });
 
-        done = true;
-      })
+    const { waitForValueToChange } = renderHook(() =>
+      useEvents(
+        {},
+        (err?: Error, data?: any) => {
+          expect(err).toBeUndefined();
+          expect(data).not.toBeUndefined();
+
+          done = true;
+        },
+        []
+      )
     );
 
     await waitForValueToChange(() => done);
@@ -62,13 +64,23 @@ describe("createUseEvents", () => {
     possibleValue.value = {};
     let done = false;
 
-    const { waitForValueToChange } = renderHook(() =>
-      useEvents({}, (err?: Error, data?: any) => {
-        expect(err).toBeUndefined();
-        expect(data).not.toBeUndefined();
+    useEvents = createUseEvents(`teste-${id}`, {
+      hostname: "any",
+      event: "teste:event",
+      auto: mode.AUTO,
+    });
 
-        done = true;
-      })
+    const { waitForValueToChange } = renderHook(() =>
+      useEvents(
+        {},
+        (err?: Error, data?: any) => {
+          expect(err).toBeUndefined();
+          expect(data).not.toBeUndefined();
+
+          done = true;
+        },
+        []
+      )
     );
 
     await waitForValueToChange(() => done);
@@ -80,16 +92,26 @@ describe("createUseEvents", () => {
     possibleValue.error = new Error("correctError");
     let done = false;
 
+    useEvents = createUseEvents(`teste-${id}`, {
+      hostname: "any",
+      event: "teste:event",
+      auto: mode.AUTO,
+    });
+
     const { waitForValueToChange } = renderHook(() =>
-      useEvents({}, (err?: Error, data?: any) => {
-        expect(data).toBeUndefined();
+      useEvents(
+        {},
+        (err?: Error, data?: any) => {
+          expect(data).toBeUndefined();
 
-        expect(err).not.toBeNull();
-        expect(err).not.toBeUndefined();
-        expect(err.message).toBe("correctError");
+          expect(err).not.toBeNull();
+          expect(err).not.toBeUndefined();
+          expect(err.message).toBe("correctError");
 
-        done = true;
-      })
+          done = true;
+        },
+        []
+      )
     );
 
     await waitForValueToChange(() => done);
@@ -101,25 +123,37 @@ describe("createUseEvents", () => {
     possibleValue.value = {};
     let done = false;
 
+    useEvents = createUseEvents(`teste-${id}`, {
+      hostname: "any",
+      event: "teste:event",
+      auto: mode.NO_AUTO,
+    });
+
     const { result, waitForValueToChange } = renderHook(
       () =>
-        useEvents({}, (err?: Error, data?: any) => {
-          expect(err).toBeUndefined();
+        useEvents(
+          {},
+          (err?: Error, data?: any) => {
+            expect(err).toBeUndefined();
 
-          expect(data).not.toBeNull();
-          expect(data).not.toBeUndefined();
-          done = true;
-        }),
+            expect(data).not.toBeNull();
+            expect(data).not.toBeUndefined();
+            done = true;
+          },
+          []
+        ),
       {
         wrapper: ({ children }) =>
           React.createElement(React.Suspense, {
             fallback: "",
-            children
-          })
+            children,
+          }),
       }
     );
 
     await result.current;
+
+    act(() => result.current());
 
     await waitForValueToChange(() => done);
 

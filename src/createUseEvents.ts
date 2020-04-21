@@ -44,7 +44,7 @@ export type UseEventsConfig = {
 export type CreateUseEvents = (
   useEvents: UseEventsConfig,
   callback: Callback,
-  controls: [any]
+  controls: [any?]
 ) => UseFetcher;
 
 export type CreateUseEventsParams = {
