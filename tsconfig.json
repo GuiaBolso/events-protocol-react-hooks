@@ -1,0 +1,21 @@
+{
+  "include": ["src/**/*.ts", "src/client/tests/createUseEvents.spec.tsx"],
+  "exclude": ["hooks", "src/**/*.spec.ts", "./node_modules"],  
+  "compilerOptions": {
+    "jsx": "react",
+    "target": "es5",
+    "lib": ["es6", "dom"],
+    "module": "CommonJS",
+    "moduleResolution": "node",
+    "allowJs": true,
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true,
+    "esModuleInterop": true,
+    "noImplicitAny": true,
+    "strictNullChecks": true,
+    "allowSyntheticDefaultImports": true,
+    "declaration": true,
+    "sourceMap": true
+  },
+  "type": ["core-js"]
+}
