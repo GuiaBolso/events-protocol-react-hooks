@@ -1,5 +1,5 @@
 {
-  "name": "events-protocol-react-hooks",
+  "name": "@guiabolsobr/events-protocol-react-hooks",
   "version": "1.0.0",
   "description": "React Hooks de manipulação do protocolo de eventos",
   "main": "index.ts",
