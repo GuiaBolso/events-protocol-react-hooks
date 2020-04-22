@@ -3,7 +3,7 @@ import * as React from "react";
 import "@testing-library/jest-dom";
 import { renderHook, act } from "@testing-library/react-hooks";
 
-import createUseEvents, { mode, CreateUseEvents } from "../createUseEvents";
+import createUseEvents, { mode, CreateUseEvents } from "../";
 import events from "@guiabolsobr/events-protocol/client";
 
 jest.mock("@guiabolsobr/events-protocol/client");

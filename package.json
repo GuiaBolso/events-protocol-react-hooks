@@ -1,15 +1,15 @@
 {
   "name": "@guiabolsobr/events-protocol-react-hooks",
-  "version": "1.0.0",
+  "version": "1.0.3",
   "description": "React Hooks de manipulação do protocolo de eventos",
-  "main": "index.ts",
+  "main": "index.js",
   "scripts": {
     "lint": "eslint ./src/*.ts",
     "prebuild": "npm run lint && npm run test",
     "beautify": "prettier --write ./src/*.ts",
     "start": "ts-node ./example/index.ts",
     "test": "jest --ci",
-    "build": "cross-env NODE_ENV=production tsc --outDir ./hooks"
+    "build": "cross-env NODE_ENV=production tsc --outDir ./"
   },
   "repository": {
     "type": "git",

@@ -1,7 +1,7 @@
 import * as React from "react";
 import * as ReactDOM from "react-dom";
 
-import createUseEvents, { mode } from "../src/createUseEvents";
+import createUseEvents, { mode } from "../src/";
 
 const useEvents = createUseEvents("my-test-event", {
   hostname: "",
