@@ -1,25 +1,24 @@
 import * as React from "react";
 import * as ReactDOM from "react-dom";
 
-import createUseEvents, { mode } from "../src/";
-
-const useEvents = createUseEvents("my-test-event", {
-  hostname: "",
-  event: "my:event:v1",
-  auto: mode.NO_AUTO,
-});
+import useEvents, { EventProvider } from "../src/";
 
 const App = (): React.ReactElement => {
   const [value, setValue] = React.useState(0);
-  const execute = useEvents(
-    {},
-    (err, data) => {
-      console.log("Callback", err, data, value);
-      if (err) console.error(err);
-      else if (data) setValue(value + data?.payload?.increment);
-    },
-    [value]
+  const { execute, status, data, error } = useEvents(
+    "my-event",
+    "my:event",
+    {}
   );
+
+  React.useEffect(() => {
+    if (data) {
+      console.warn(data);
+      setValue(value + data.payload?.increment);
+    }
+    if (error) console.error(error);
+  }, [status, data, error]);
+
   return (
     <>
       <p>{value}</p>
@@ -38,8 +37,10 @@ const App = (): React.ReactElement => {
 };
 
 ReactDOM.render(
-  <React.Suspense fallback="Loading...">
-    <App />
-  </React.Suspense>,
+  <EventProvider hostname=".">
+    <React.Suspense fallback="Loading...">
+      <App />
+    </React.Suspense>
+  </EventProvider>,
   document.querySelector("main")
 );

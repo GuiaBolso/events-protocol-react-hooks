@@ -1,157 +1,186 @@
 import * as React from "react";
 import client from "@guiabolsobr/events-protocol/client";
 
+const log = (...params: any): void => {
+  if (process.env.NODE_ENV !== "production") console.log(...params);
+};
+
 export interface ProcessEnv {
   NODE_ENV: string;
 }
 
-const status = {
-  IDLE: 0,
+type Status = number;
+export const status = {
+  IDLE: -1,
+  START: 0,
   LOADING: 1,
   DONE: 2,
   ERROR: 3,
-  NO_AUTO: 4,
-  COMPLETED: 5,
+  COMPLETED: 4,
 };
 
-type Status = number;
 type CacheItem = {
   promise?: Promise<Response>;
   status: Status;
+  sender: Function;
+  execute?: Execute;
 };
 type Cache = {
   [key: string]: CacheItem;
 };
-
 const cache: Cache = {};
 
-export type UseFetcher = () => void;
-
-type Mode = true | false;
-export const mode = {
-  NO_AUTO: false,
-  AUTO: true,
+const baseContext = {
+  auth: null,
+  identity: {},
+  metadata: {},
+  hostname: null,
+  updateAuth(auth: any): void {
+    this.auth = { ...this.auth, auth };
+  },
+  updateIdentity(identity: any): void {
+    this.identity = { ...this.identity, identity };
+  },
+  updateMetadata(metadata: any): void {
+    this.metadata = { ...this.metadata, metadata };
+  },
 };
+const EventContext = React.createContext(baseContext);
 
-export type Callback = (
-  error: Error | undefined,
-  data: any | undefined
-) => void;
-export type UseEventsConfig = {
-  _payload?: any;
-  _auth?: any;
-};
-export type CreateUseEvents = (
-  useEvents: UseEventsConfig,
-  callback: Callback,
-  controls: [any?]
-) => UseFetcher;
+export const EventProvider = ({
+  hostname = null,
+  auth = null,
+  identity = {},
+  metadata = {},
+  children = null,
+}): React.ReactElement => {
+  if (!hostname) throw new Error("You must provide a valid hostname");
+  log("EventProvider", { hostname, auth, identity, metadata });
 
-export type CreateUseEventsParams = {
-  hostname: string;
-  event: string;
-  metadata?: any;
-  auto: boolean;
-};
-
-export default function createUserEvents(
-  id: string,
-  { hostname, event, metadata, auto = mode.AUTO }: CreateUseEventsParams
-): CreateUseEvents {
-  const sendEvent = client.generateFetchEventByName({
-    hostname,
-    metadata: metadata || {},
+  return React.createElement(EventContext.Provider, {
+    value: {
+      ...baseContext,
+      hostname,
+      auth,
+      identity,
+      metadata,
+    },
+    children,
   });
+};
 
-  return (
-    { _payload, _auth }: UseEventsConfig,
-    _callback: Callback,
-    controls: [any]
-  ): UseFetcher => {
-    const [noAuto, setNoAuto] = React.useState<boolean>(!auto);
-    const [data, setData] = React.useState<any>(undefined);
-    const [error, setError] = React.useState<Error | undefined>(undefined);
-    const [payload, setPayload] = React.useState<any | undefined>(_payload);
-    const [auth, setAuth] = React.useState<any | undefined>(_auth);
+type Execute = (payload?: any, auth?: any) => void;
+export default function useEvents(
+  id: string,
+  event: string,
+  config?: any
+): {
+  execute: Execute;
+  data: any;
+  error: any;
+  status: Status;
+} {
+  const localContext = React.useContext(EventContext);
+  log("useEvents context", localContext);
 
-    let local: CacheItem | undefined = cache[id];
+  const metadata = { ...localContext.metadata, ...(config?.metadata || {}) };
+  const identity = { ...localContext.identity, ...(config?.identity || {}) };
 
-    const callback = React.useCallback(
-      (error, data) => {
-        if (typeof _callback === "function") {
-          _callback(error, data);
-        }
-        if (local) local.status = status.COMPLETED;
-      },
-      [data, error, ...controls]
-    );
+  const [payload, setPayload] = React.useState<any | undefined>(
+    config?.payload
+  );
+  const [auth, setAuth] = React.useState<any | undefined>(
+    config?.auth || localContext.auth
+  );
 
-    function checkStatus(status: Status): boolean {
-      return (local && local?.status === status) || false;
+  const [data, setData] = React.useState<any>(undefined);
+  const [error, setError] = React.useState<Error | undefined>(undefined);
+
+  let local: CacheItem = cache[id];
+
+  if (!cache[id]) {
+    local = cache[id] = {
+      status: status.IDLE,
+      sender: client.generateFetchEventByName({
+        hostname: localContext.hostname,
+        metadata: localContext.metadata,
+      }),
+    };
+  }
+
+  const [_status, _setStatus] = React.useState<Status>(local.status);
+  function setStatus(value: Status): void {
+    log("status", value);
+    local.status = value;
+    log("setStatus", local);
+    _setStatus(local.status);
+    log("setStatus", _status);
+  }
+
+  function checkStatus(status: Status): boolean {
+    return (local && local?.status === status) || false;
+  }
+
+  function execute(_payload?: any, _auth?: any): void {
+    if (!status.IDLE || !status.COMPLETED) {
+      return;
     }
 
-    function execute(_payload?: any, _auth?: any): void {
-      setPayload(_payload);
-      setAuth(_auth);
+    if (_payload) setPayload(_payload);
+    if (_auth) setAuth(_auth);
 
-      delete cache[id];
-      local = undefined;
-      setNoAuto(false);
+    setStatus(status.START);
 
-      setData(undefined);
-      setError(undefined);
+    setData(undefined);
+    setError(undefined);
+    log("Executing", local);
+  }
 
-      console.log("execute scheduled", noAuto, local);
+  React.useEffect(() => {
+    function resolver(): void {
+      if (!local || !local.promise) return;
+      local.promise
+        .then((data: any) => {
+          if (!local) return;
+          setStatus(status.DONE);
+          localContext.updateAuth(data?.auth);
+          setData(data);
+        })
+        .catch((err) => {
+          if (!local) return;
+          setStatus(status.ERROR);
+          const error = new Error(err?.payload?.code || err?.message || "");
+          setError(error);
+        });
     }
 
-    React.useEffect(() => {
-      function resolver(): void {
-        if (!local || !local.promise) return;
-        local.promise
-          .then((data) => {
-            if (!local) return;
-            local.status = status.DONE;
-            setData(data);
-          })
-          .catch((err) => {
-            if (!local) return;
-            local.status = status.ERROR;
-            const error = new Error(err?.payload?.code || err?.message || "");
-            setError(error);
-          });
-      }
+    if (local && local.status < status.DONE) resolver();
+  }, [local, _status]);
 
-      if (local && local.status < status.DONE) resolver();
-    }, [local]);
+  if (process.env.NODE_ENV !== "production")
+    console.info("Creating fetcher", local);
 
-    if (process.env.NODE_ENV !== "production")
-      console.info("Creating fetcher", local);
+  if (checkStatus(status.LOADING)) {
+    log("Loading");
+  } else if (checkStatus(status.DONE)) {
+    log("Done", data);
+    setStatus(status.COMPLETED);
+  } else if (checkStatus(status.ERROR)) {
+    log("Error", data);
+    setStatus(status.COMPLETED);
+  } else if (checkStatus(status.START)) {
+    log("Starting", local);
+    local.promise = local.sender(event, payload, {
+      isAuthorized: !!auth,
+      auth,
+      metadata,
+      identity,
+    });
+    local.execute = execute;
+    setStatus(status.LOADING);
+    log("Started", local);
+    throw local.promise;
+  }
 
-    if (checkStatus(status.IDLE)) {
-      if (process.env.NODE_ENV !== "production") console.info("Loading");
-      local.status = status.LOADING;
-      throw local.promise;
-    } else if (checkStatus(status.DONE)) {
-      if (process.env.NODE_ENV !== "production") console.info("Done", data);
-      callback(undefined, data);
-    } else if (checkStatus(status.ERROR)) {
-      if (process.env.NODE_ENV !== "production") console.error("Error", error);
-      callback(error, undefined);
-    } else if (noAuto && !local) {
-      local = cache[id] = {
-        status: status.NO_AUTO,
-      };
-      if (process.env.NODE_ENV !== "production") console.info("No auto", local);
-    } else if (!local) {
-      if (process.env.NODE_ENV !== "production")
-        console.info("Idle", event, payload);
-      local = cache[id] = {
-        promise: sendEvent(event, payload, { isAuthorized: !!auth, auth }),
-        status: status.IDLE,
-      };
-      throw local.promise;
-    }
-
-    return execute;
-  };
+  return { execute, data, error, status: _status };
 }
