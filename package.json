@@ -34,8 +34,8 @@
     "@types/node": "^13.13.1",
     "@types/parcel-bundler": "^1.12.1",
     "@types/testing-library__jest-dom": "^5.0.3",
-    "react": "^16.13.1",
-    "react-dom": "^16.13.1"
+    "react": "^17.0.1",
+    "react-dom": "^17.0.1"
   },
   "devDependencies": {
     "@babel/core": "^7.9.0",
